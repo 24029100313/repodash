@@ -3,11 +3,11 @@
 [![npm version](https://img.shields.io/npm/v/repodash.svg)](https://www.npmjs.com/package/repodash)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-Interactive terminal intelligence for Git repository health.
+Interactive TUI for checking Git repository health.
 
-`repodash` turns a repository into a navigable health dashboard. It works with local Git repositories and public GitHub repositories, then surfaces activity trends, contributor concentration, file churn, language mix, and a weighted health score in one terminal-native workflow.
+`repodash` analyzes local Git repositories and public GitHub repositories, then shows activity trends, contributor concentration, file churn, language mix, and a weighted health score in a terminal dashboard.
 
-> Built for maintainers, contributors, reviewers, and anyone evaluating whether a repository is active, healthy, and safe to depend on.
+It is meant for maintainers, contributors, reviewers, and anyone trying to understand how healthy a repository looks before spending more time on it.
 
 **Quick links:** [Why repodash](#why-repodash) | [Install](#install) | [Quick Start](#quick-start) | [Health Score](#health-score) | [Development](#development)
 
@@ -15,21 +15,21 @@ Interactive terminal intelligence for Git repository health.
 
 ## Why repodash
 
-Repository tooling usually stops at a snapshot. `repodash` is meant to help you investigate.
+Many repository tools stop at a snapshot. `repodash` is for cases where you want a little more context.
 
 Use it when you want to answer questions like:
 
 - Is this repository actively maintained right now, or just historically popular?
 - Is the contributor base healthy, or is the project relying on one person?
 - Which files and directories absorb the most maintenance effort?
-- Does this repo look mature enough to adopt, contribute to, or benchmark against?
-- Can I export the findings into a report for review, onboarding, or due diligence?
+- Does this repo look stable enough to adopt or contribute to?
+- Can I export the findings into a report for review or onboarding?
 
-That makes `repodash` useful for open-source evaluation, dependency reviews, engineering management, technical due diligence, and internal platform stewardship.
+In practice, that makes it useful for open-source evaluation, dependency reviews, team handoffs, and routine repository maintenance.
 
 ## Highlights
 
-- Interactive TUI instead of a one-shot terminal summary.
+- Interactive TUI instead of a one-shot summary.
 - Weighted health score across activity, community, documentation, maintenance, and security signals.
 - Supports both local Git repositories and public GitHub repositories.
 - Export to Markdown or JSON for sharing, automation, and archival.
@@ -37,7 +37,7 @@ That makes `repodash` useful for open-source evaluation, dependency reviews, eng
 
 ## repodash vs onefetch
 
-`onefetch` is excellent when you want a fast repository snapshot. `repodash` is optimized for deeper inspection and ongoing health analysis.
+`onefetch` is excellent when you want a fast repository snapshot. `repodash` is aimed at exploring repository health over time.
 
 | Capability | repodash | onefetch |
 | --- | --- | --- |
@@ -103,23 +103,23 @@ repodash github:microsoft/vscode --no-cache
 
 ### Overview
 
-See repository identity, age, last update, top-level stats, language mix, and the overall health score at a glance.
+See repository identity, age, last update, top-level stats, language mix, and the overall health score.
 
 ### Activity
 
-Inspect a 52-week activity heatmap and 12-month commit trend to spot momentum, slowdowns, and bursts of work.
+Inspect a 52-week activity heatmap and a 12-month commit trend.
 
 ### Contributors
 
-Review bus factor, top contributors, and contribution concentration to understand ownership risk.
+Review bus factor, top contributors, and contribution concentration.
 
 ### Files
 
-Surface churn-heavy files, active directories, and file type distribution to locate maintenance hotspots.
+See churn-heavy files, active directories, and file type distribution.
 
 ### Health
 
-Break down the total score into five dimensions and review ranked insights from critical to good.
+Break down the total score into five dimensions and review ranked insights.
 
 ## Keyboard Shortcuts
 
@@ -147,9 +147,9 @@ The final score is weighted across five dimensions:
 
 Score interpretation:
 
-- `80-100`: Strong health. Active, maintainable, and well-supported.
-- `60-79`: Good baseline with some areas that deserve attention.
-- `40-59`: Noticeable risk signals or missing process/documentation.
+- `80-100`: Strong health. The repository looks active and reasonably well maintained.
+- `60-79`: A good baseline, but some areas deserve attention.
+- `40-59`: Clear risk signals or missing process/documentation.
 - `0-39`: High-risk repository with major sustainability concerns.
 
 ## GitHub Token
@@ -169,7 +169,7 @@ Or pass it directly:
 repodash github:microsoft/vscode --token your_token_here
 ```
 
-If you plan to inspect multiple repositories or large public projects, using a token is strongly recommended.
+If you plan to inspect multiple repositories or larger public projects, using a token is recommended.
 
 ## Development
 
@@ -194,7 +194,7 @@ If you plan to inspect multiple repositories or large public projects, using a t
 
 ## Contributing
 
-Issues, bug reports, README polish, scoring improvements, and UI ideas are all welcome.
+Issues, bug reports, README improvements, scoring changes, and UI polish are all welcome.
 
 If you want to contribute:
 
@@ -202,17 +202,17 @@ If you want to contribute:
 2. Create a feature branch.
 3. Run `npm install` and `npm run build`.
 4. Test both local mode and GitHub mode.
-5. Open a pull request with a short explanation of the change and the motivation behind it.
+5. Open a pull request with a short explanation of the change and why it helps.
 
 If you change the scoring logic or report output, include a before/after example so the behavior is easy to review.
 
 ## Inspiration
 
-This README structure borrows patterns from a few strong open-source projects:
+This README borrows a few structural ideas from strong open-source project pages:
 
-- [Glow](https://github.com/charmbracelet/glow) for strong first-screen product framing.
+- [Glow](https://github.com/charmbracelet/glow) for a clear opening section.
 - [lazygit](https://github.com/jesseduffield/lazygit) for clear install and usage flow.
-- [pnpm](https://github.com/pnpm/pnpm) for sharper differentiator framing.
+- [pnpm](https://github.com/pnpm/pnpm) for a more direct explanation of differences.
 - [bat](https://github.com/sharkdp/bat) for practical feature explanation and approachable structure.
 
 ## License
