@@ -443,18 +443,6 @@ async function getRemoteUrl(git: SimpleGit): Promise<string> {
   }
 }
 
-async function getBoundaryCommitDate(
-  git: SimpleGit,
-  args: string[],
-): Promise<Date | null> {
-  try {
-    const result = (await git.raw(args)).trim();
-    return result ? new Date(result) : null;
-  } catch {
-    return null;
-  }
-}
-
 async function getAllCommitDates(git: SimpleGit): Promise<Date[]> {
   const output = await git.raw(["log", "--all", "--format=%aI"]);
 
@@ -464,6 +452,44 @@ async function getAllCommitDates(git: SimpleGit): Promise<Date[]> {
     .filter(Boolean)
     .map((line) => new Date(line))
     .filter((value) => !Number.isNaN(value.getTime()));
+}
+
+async function getCommitDateRange(
+  git: SimpleGit,
+): Promise<{ createdAt: Date | null; lastCommitAt: Date | null }> {
+  try {
+    const commitDates = await getAllCommitDates(git);
+
+    if (commitDates.length === 0) {
+      return {
+        createdAt: null,
+        lastCommitAt: null,
+      };
+    }
+
+    let createdAt = commitDates[0] ?? null;
+    let lastCommitAt = commitDates[0] ?? null;
+
+    for (const commitDate of commitDates) {
+      if (createdAt && commitDate < createdAt) {
+        createdAt = commitDate;
+      }
+
+      if (lastCommitAt && commitDate > lastCommitAt) {
+        lastCommitAt = commitDate;
+      }
+    }
+
+    return {
+      createdAt,
+      lastCommitAt,
+    };
+  } catch {
+    return {
+      createdAt: null,
+      lastCommitAt: null,
+    };
+  }
 }
 
 function getDirectoryFromGitPath(gitPath: string): string {
@@ -584,19 +610,12 @@ export async function getBasicInfo(
   git: SimpleGit,
   repoRoot: string,
 ): Promise<BasicInfoResult> {
-  const [metadata, license, repoStat, createdAt, lastCommitAt, defaultBranch, url] =
+  const [metadata, license, repoStat, commitDateRange, defaultBranch, url] =
     await Promise.all([
       readProjectMetadata(repoRoot),
       resolveLicense(repoRoot),
       stat(repoRoot),
-      getBoundaryCommitDate(git, [
-        "log",
-        "--all",
-        "--reverse",
-        "--max-count=1",
-        "--format=%aI",
-      ]),
-      getBoundaryCommitDate(git, ["log", "--all", "-1", "--format=%aI"]),
+      getCommitDateRange(git),
       getDefaultBranch(git),
       getRemoteUrl(git),
     ]);
@@ -605,8 +624,8 @@ export async function getBasicInfo(
     ...metadata,
     url,
     license,
-    createdAt: createdAt ?? repoStat.birthtime,
-    lastCommitAt: lastCommitAt ?? repoStat.mtime,
+    createdAt: commitDateRange.createdAt ?? repoStat.birthtime,
+    lastCommitAt: commitDateRange.lastCommitAt ?? repoStat.mtime,
     defaultBranch,
   };
 }
@@ -885,23 +904,16 @@ export async function analyze(repoPath: string): Promise<RepoData> {
   const repoRoot = await validateRepo(repoPath);
   const git = simpleGit(repoRoot);
 
-  const [
-    basicInfo,
-    languageScan,
-    commitStats,
-    weeklyActivity,
-    monthlyActivity,
-    fileChurn,
-    baseSignals,
-  ] = await Promise.all([
-    getBasicInfo(git, repoRoot),
+  const [languageScan, baseSignals] = await Promise.all([
     getLanguages(repoRoot),
-    getCommitStats(git),
-    getWeeklyActivity(git),
-    getMonthlyActivity(git),
-    getFileChurn(git),
     getRepoSignals(repoRoot),
   ]);
+
+  const basicInfo = await getBasicInfo(git, repoRoot);
+  const commitStats = await getCommitStats(git);
+  const weeklyActivity = await getWeeklyActivity(git);
+  const monthlyActivity = await getMonthlyActivity(git);
+  const fileChurn = await getFileChurn(git);
 
   const signals: RepoSignals = {
     ...baseSignals,

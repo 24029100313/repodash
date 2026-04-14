@@ -99,6 +99,28 @@ Ignore cache and fetch fresh GitHub data:
 repodash github:microsoft/vscode --no-cache
 ```
 
+## Example Snapshot
+
+`repodash` was tested against a local clone of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) on 2026-04-14.
+
+The numbers below are only a point-in-time sample. They will change as the repository changes.
+
+```bash
+git clone https://github.com/NousResearch/hermes-agent.git
+repodash ./hermes-agent
+```
+
+| Metric | Value |
+| --- | --- |
+| Health Score | `88/100` |
+| Total Commits | `5,599` |
+| Contributors | `487` |
+| Bus Factor | `3` |
+| Top Language | `Python` |
+| Most Changed File | `run_agent.py` (`714` recorded changes) |
+| README Size | `1,173` words |
+| Visible Activity Window | `39` weeks in the current 52-week view |
+
 ## Views
 
 ### Overview
