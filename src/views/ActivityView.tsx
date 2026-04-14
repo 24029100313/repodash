@@ -1,4 +1,5 @@
 import React from "react";
+import { addDays, format, parse } from "date-fns";
 import { Box, Text } from "ink";
 
 import { BarChart } from "../components/BarChart.js";
@@ -9,9 +10,11 @@ export interface ActivityViewProps {
   repo: RepoData;
 }
 
-function buildMonthlyBars(repo: RepoData): Array<{ label: string; value: number; color?: string }> {
+function buildMonthlyBars(
+  repo: RepoData,
+): Array<{ label: string; value: number; color?: string }> {
   return repo.monthlyActivity.map((entry) => ({
-    label: entry.month.slice(5),
+    label: format(parse(entry.month, "yyyy-MM", new Date()), "MMM yy"),
     value: entry.count,
     color: "cyan",
   }));
@@ -37,6 +40,20 @@ function describeMonthOverMonthChange(repo: RepoData): string {
   return `Month-over-month: ${ratio >= 0 ? "+" : ""}${ratio.toFixed(1)}%`;
 }
 
+function formatWeekRange(week: string): string {
+  const weekStart = parse(`${week}-1`, "RRRR-II-i", new Date());
+  if (Number.isNaN(weekStart.getTime())) {
+    return week;
+  }
+
+  const weekEnd = addDays(weekStart, 6);
+  if (format(weekStart, "MMM") === format(weekEnd, "MMM")) {
+    return `${format(weekStart, "MMM d")}-${format(weekEnd, "d")}`;
+  }
+
+  return `${format(weekStart, "MMM d")}-${format(weekEnd, "MMM d")}`;
+}
+
 export function ActivityView({ repo }: ActivityViewProps): React.JSX.Element {
   const weeklyTotal = repo.weeklyActivity.reduce((sum, entry) => sum + entry.count, 0);
   const peakWeek =
@@ -51,18 +68,26 @@ export function ActivityView({ repo }: ActivityViewProps): React.JSX.Element {
 
   return (
     <Box flexDirection="column">
-      <Text color="cyan">📈 Commit Activity (Last 52 Weeks)</Text>
+      {repo.signals?.isShallowClone ? (
+        <Box marginBottom={1}>
+          <Text color="yellow">
+            Warning: shallow clone detected. Activity history may be truncated.
+          </Text>
+        </Box>
+      ) : null}
+
+      <Text color="cyan">Commit Activity (Last 52 Weeks)</Text>
       <Heatmap data={repo.weeklyActivity} />
       <Text>
-        Peak week: {peakWeek.week} ({peakWeek.count})  |  Total commits: {weeklyTotal}  |  Avg/week:{" "}
-        {averagePerWeek.toFixed(1)}
+        Peak week: {formatWeekRange(peakWeek.week)} ({peakWeek.count})  |  Total commits:{" "}
+        {weeklyTotal}  |  Avg/week: {averagePerWeek.toFixed(1)}
       </Text>
       {availableWeeks !== undefined && availableWeeks < 52 ? (
         <Text color="yellow">Only {availableWeeks} weeks of source data available</Text>
       ) : null}
 
       <Box marginTop={1} flexDirection="column">
-        <Text color="cyan">📊 Monthly Commits (Last 12 Months)</Text>
+        <Text color="cyan">Monthly Commits (Last 12 Months)</Text>
         <BarChart data={monthlyBars} maxWidth={28} />
         <Text color="gray">{describeMonthOverMonthChange(repo)}</Text>
       </Box>

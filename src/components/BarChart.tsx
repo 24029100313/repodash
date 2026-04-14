@@ -1,6 +1,8 @@
 import React from "react";
 import { Box, Text } from "ink";
 
+const FULL_BLOCK = String.fromCodePoint(0x2588);
+
 export interface BarChartDatum {
   label: string;
   value: number;
@@ -32,7 +34,7 @@ function renderBar(value: number, maxValue: number, maxWidth: number): string {
   }
 
   const filled = Math.round((value / maxValue) * maxWidth);
-  return `${"█".repeat(filled)}${" ".repeat(Math.max(maxWidth - filled, 0))}`;
+  return `${FULL_BLOCK.repeat(filled)}${" ".repeat(Math.max(maxWidth - filled, 0))}`;
 }
 
 export function BarChart({

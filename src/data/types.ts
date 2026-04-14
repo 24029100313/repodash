@@ -94,6 +94,7 @@ export interface RepoSignals {
   dependencyCount?: number;
   githubApiRemaining?: number;
   activityWeeksAvailable?: number;
+  isShallowClone?: boolean;
 }
 
 export interface RepoData {

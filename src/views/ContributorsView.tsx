@@ -1,4 +1,5 @@
 import React from "react";
+import { format } from "date-fns";
 import { Box, Text } from "ink";
 
 import { BarChart } from "../components/BarChart.js";
@@ -40,19 +41,23 @@ function topContributionShare(repo: RepoData, limit: number): string {
   return `${((partial / total) * 100).toFixed(1)}%`;
 }
 
-function getBusFactorStatus(busFactor: number): {
+function getBusFactorStatus(repo: RepoData): {
   color: string;
   label: string;
 } {
-  if (busFactor <= 1) {
-    return { color: "red", label: "⚠ 高风险：单点依赖" };
+  if (repo.totalContributors === 1) {
+    return { color: "yellow", label: "Solo project: expected single-maintainer risk" };
   }
 
-  if (busFactor === 2) {
-    return { color: "yellow", label: "需关注" };
+  if (repo.busFactor <= 1) {
+    return { color: "red", label: "High risk: single point of failure" };
   }
 
-  return { color: "green", label: "健康" };
+  if (repo.busFactor === 2) {
+    return { color: "yellow", label: "Needs attention" };
+  }
+
+  return { color: "green", label: "Healthy" };
 }
 
 export function ContributorsView({ repo }: ContributorsViewProps): React.JSX.Element {
@@ -62,7 +67,7 @@ export function ContributorsView({ repo }: ContributorsViewProps): React.JSX.Ele
     value: contributor.commits,
     color: "green",
   }));
-  const busFactorStatus = getBusFactorStatus(repo.busFactor);
+  const busFactorStatus = getBusFactorStatus(repo);
   const gini = calculateGini(repo.contributors.map((contributor) => contributor.commits));
 
   return (
@@ -71,15 +76,16 @@ export function ContributorsView({ repo }: ContributorsViewProps): React.JSX.Ele
         Bus Factor: {repo.busFactor}  |  {busFactorStatus.label}
       </Text>
       <Text color="gray">
-        Bus factor 表示要累积到 50% 提交量，最少需要多少位贡献者。
+        Bus factor is the smallest number of contributors needed to account for half of the
+        commit history.
       </Text>
 
       <Box marginTop={1} flexDirection="column">
         <BarChart data={chartData} maxWidth={28} title="Top 10 Contributors" />
         {topContributors.map((contributor) => (
           <Text key={`${contributor.name}-${contributor.email}`}>
-            {contributor.name}: first {contributor.firstCommit.toISOString().slice(0, 10)} / last{" "}
-            {contributor.lastCommit.toISOString().slice(0, 10)}
+            {contributor.name}: first {format(contributor.firstCommit, "MMM d, yyyy")} / last{" "}
+            {format(contributor.lastCommit, "MMM d, yyyy")}
           </Text>
         ))}
       </Box>

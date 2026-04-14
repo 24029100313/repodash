@@ -35,6 +35,21 @@ const IGNORED_DIRECTORIES = new Set([
   "vendor",
 ]);
 
+const LOCKFILE_NAMES = new Set([
+  "bun.lock",
+  "bun.lockb",
+  "cargo.lock",
+  "composer.lock",
+  "gemfile.lock",
+  "go.sum",
+  "npm-shrinkwrap.json",
+  "package-lock.json",
+  "pipfile.lock",
+  "pnpm-lock.yaml",
+  "poetry.lock",
+  "yarn.lock",
+]);
+
 const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
   ".c": "C",
   ".cc": "C++",
@@ -151,7 +166,15 @@ function getLanguageForFile(filePath: string): string {
   }
 
   const extension = path.extname(baseName).toLowerCase();
-  return EXTENSION_LANGUAGE_MAP[extension] ?? "Other";
+  if (EXTENSION_LANGUAGE_MAP[extension]) {
+    return EXTENSION_LANGUAGE_MAP[extension];
+  }
+
+  if (extension) {
+    return `Other (${extension})`;
+  }
+
+  return "Other ([no extension])";
 }
 
 function getFileTypeForFile(filePath: string): string {
@@ -204,6 +227,42 @@ async function readIfExists(filePath: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+async function getRootFileEntries(repoRoot: string): Promise<Map<string, string>> {
+  const entries = await readdir(repoRoot, { withFileTypes: true });
+  const fileEntries = new Map<string, string>();
+
+  for (const entry of entries) {
+    if (!entry.isFile()) {
+      continue;
+    }
+
+    fileEntries.set(entry.name.toLowerCase(), entry.name);
+  }
+
+  return fileEntries;
+}
+
+async function findFirstMatchingRootFile(
+  repoRoot: string,
+  candidates: string[],
+): Promise<{ path: string; content: string | null } | null> {
+  const fileEntries = await getRootFileEntries(repoRoot);
+
+  for (const candidate of candidates) {
+    const actualName = fileEntries.get(candidate.toLowerCase());
+    if (!actualName) {
+      continue;
+    }
+
+    return {
+      path: actualName,
+      content: await readIfExists(path.join(repoRoot, actualName)),
+    };
+  }
+
+  return null;
 }
 
 async function readProjectMetadata(repoRoot: string): Promise<ProjectMetadata> {
@@ -295,12 +354,9 @@ function detectLicense(content: string): string | null {
 
 async function resolveLicense(repoRoot: string): Promise<string | null> {
   const candidates = ["LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"];
-
-  for (const candidate of candidates) {
-    const licenseText = await readIfExists(path.join(repoRoot, candidate));
-    if (licenseText) {
-      return detectLicense(licenseText);
-    }
+  const match = await findFirstMatchingRootFile(repoRoot, candidates);
+  if (match?.content) {
+    return detectLicense(match.content);
   }
 
   return null;
@@ -319,20 +375,7 @@ async function findFirstMatchingFile(
   repoRoot: string,
   candidates: string[],
 ): Promise<{ path: string; content: string | null } | null> {
-  for (const candidate of candidates) {
-    const candidatePath = path.join(repoRoot, candidate);
-    const exists = await fileExists(candidatePath);
-    if (!exists) {
-      continue;
-    }
-
-    return {
-      path: candidate,
-      content: await readIfExists(candidatePath),
-    };
-  }
-
-  return null;
+  return findFirstMatchingRootFile(repoRoot, candidates);
 }
 
 function countWords(content: string): number {
@@ -369,20 +412,31 @@ function countPackageDependencies(packageJsonText: string): number | undefined {
 export async function getRepoSignals(repoRoot: string): Promise<RepoSignals> {
   const readmeMatch = await findFirstMatchingFile(repoRoot, [
     "README.md",
+    "readme.md",
     "README",
+    "readme",
     "README.txt",
+    "readme.txt",
     "README.rst",
+    "readme.rst",
   ]);
   const contributingMatch = await findFirstMatchingFile(repoRoot, [
     "CONTRIBUTING.md",
+    "contributing.md",
     "CONTRIBUTING",
+    "contributing",
     "CONTRIBUTING.txt",
+    "contributing.txt",
   ]);
   const changelogMatch = await findFirstMatchingFile(repoRoot, [
     "CHANGELOG.md",
+    "changelog.md",
     "CHANGELOG",
+    "changelog",
     "CHANGELOG.txt",
+    "changelog.txt",
     "HISTORY.md",
+    "history.md",
   ]);
   const packageJsonText = await readIfExists(path.join(repoRoot, "package.json"));
   const lockfileCandidates = [
@@ -417,6 +471,11 @@ export async function getRepoSignals(repoRoot: string): Promise<RepoSignals> {
       ? countPackageDependencies(packageJsonText)
       : undefined,
   };
+}
+
+function shouldExcludeFromLanguageStats(filePath: string): boolean {
+  const baseName = path.basename(filePath).toLowerCase();
+  return LOCKFILE_NAMES.has(baseName);
 }
 
 async function getDefaultBranch(git: SimpleGit): Promise<string> {
@@ -584,6 +643,14 @@ async function getRecentDirectoryActivity(
   }
 }
 
+async function isShallowRepository(git: SimpleGit): Promise<boolean> {
+  try {
+    return (await git.raw(["rev-parse", "--is-shallow-repository"])).trim() === "true";
+  } catch {
+    return false;
+  }
+}
+
 export async function validateRepo(repoPath: string): Promise<string> {
   const resolvedPath = path.resolve(repoPath);
   await access(resolvedPath, fsConstants.F_OK);
@@ -660,16 +727,21 @@ export async function getLanguages(repoRoot: string): Promise<LanguageScanResult
       try {
         const fileStat = await stat(absolutePath);
         const fileSize = fileStat.size;
-        const language = getLanguageForFile(relativePath);
         const fileType = getFileTypeForFile(relativePath);
+        const excludeFromLanguageStats = shouldExcludeFromLanguageStats(relativePath);
 
         fileCount += 1;
         totalBytes += fileSize;
-        languageBytes[language] = (languageBytes[language] ?? 0) + fileSize;
         fileTypeCounts[fileType] = (fileTypeCounts[fileType] ?? 0) + 1;
 
-        const content = await readFile(absolutePath);
-        if (!isBinaryContent(content)) {
+        if (!excludeFromLanguageStats) {
+          const content = await readFile(absolutePath);
+          if (isBinaryContent(content)) {
+            continue;
+          }
+
+          const language = getLanguageForFile(relativePath);
+          languageBytes[language] = (languageBytes[language] ?? 0) + fileSize;
           linesOfCode += countLines(content);
         }
       } catch {
@@ -904,9 +976,10 @@ export async function analyze(repoPath: string): Promise<RepoData> {
   const repoRoot = await validateRepo(repoPath);
   const git = simpleGit(repoRoot);
 
-  const [languageScan, baseSignals] = await Promise.all([
+  const [languageScan, baseSignals, isShallowClone] = await Promise.all([
     getLanguages(repoRoot),
     getRepoSignals(repoRoot),
+    isShallowRepository(git),
   ]);
 
   const basicInfo = await getBasicInfo(git, repoRoot);
@@ -921,6 +994,7 @@ export async function analyze(repoPath: string): Promise<RepoData> {
       basicInfo.createdAt,
       commitStats.totalCommits,
     ),
+    isShallowClone,
   };
 
   const draft: RepoDataDraft = {

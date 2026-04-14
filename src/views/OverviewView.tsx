@@ -1,6 +1,6 @@
 import React from "react";
-import { Box, Text, useStdout } from "ink";
 import { formatDistanceToNowStrict } from "date-fns";
+import { Box, Text, useStdout } from "ink";
 
 import { BarChart } from "../components/BarChart.js";
 import { ScoreGauge } from "../components/ScoreGauge.js";
@@ -15,7 +15,7 @@ function truncate(value: string, maxLength: number): string {
     return value;
   }
 
-  return `${value.slice(0, maxLength - 1)}…`;
+  return `${value.slice(0, maxLength - 3)}...`;
 }
 
 function buildLanguagePercentages(
@@ -42,41 +42,57 @@ export function OverviewView({ repo }: OverviewViewProps): React.JSX.Element {
   const languageData = buildLanguagePercentages(repo.languages);
 
   return (
-    <Box flexDirection={isWide ? "row" : "column"}>
-      <Box flexDirection="column" width={isWide ? "55%" : undefined} marginRight={isWide ? 3 : 0}>
-        <Text bold color="cyan">
-          📦 {repo.name}
-        </Text>
-        <Text>📝 {repo.description ? truncate(repo.description, 60) : "No description"}</Text>
-        <Text>🔗 {repo.url || "No origin URL"}</Text>
-        <Text>🔒 {repo.license ?? "Unknown"}</Text>
-        <Text>
-          📅 Created {formatDistanceToNowStrict(repo.createdAt, { addSuffix: true })} / Last
-          commit {formatDistanceToNowStrict(repo.lastCommitAt, { addSuffix: true })}
-        </Text>
-        <Text>👥 Contributors: {repo.totalContributors}</Text>
-        <Text>📊 Total commits: {repo.totalCommits}</Text>
-        <Text>
-          📁 Files: {repo.fileCount} / {repo.repoSizeMB.toFixed(2)} MB
-        </Text>
-      </Box>
-
-      <Box flexDirection="column" flexGrow={1}>
-        <BarChart
-          data={languageData}
-          title="Top Languages"
-          showPercent
-          maxWidth={28}
-        />
-        <Box marginTop={1}>
-          <ScoreGauge score={repo.health.total} label="Health Score" size="md" />
+    <Box flexDirection="column">
+      {repo.signals?.isShallowClone ? (
+        <Box marginBottom={1}>
+          <Text color="yellow">
+            Warning: shallow clone detected. Commit history and activity metrics may be incomplete.
+          </Text>
         </Box>
-        {repo.source === "github" ? (
-          <Box marginTop={1} flexDirection="column">
-            <Text>⭐ Stars: {repo.stars ?? 0}</Text>
-            <Text>🍴 Forks: {repo.forks ?? 0}</Text>
+      ) : null}
+
+      <Box flexDirection={isWide ? "row" : "column"}>
+        <Box
+          flexDirection="column"
+          width={isWide ? "55%" : undefined}
+          marginRight={isWide ? 3 : 0}
+        >
+          <Text bold color="cyan">
+            Package: {repo.name}
+          </Text>
+          <Text>
+            Description: {repo.description ? truncate(repo.description, 60) : "No description"}
+          </Text>
+          <Text>URL: {repo.url || "No origin URL"}</Text>
+          <Text>License: {repo.license ?? "Unknown"}</Text>
+          <Text>
+            Created {formatDistanceToNowStrict(repo.createdAt, { addSuffix: true })} / Last commit{" "}
+            {formatDistanceToNowStrict(repo.lastCommitAt, { addSuffix: true })}
+          </Text>
+          <Text>Contributors: {repo.totalContributors}</Text>
+          <Text>Total commits: {repo.totalCommits}</Text>
+          <Text>
+            Files: {repo.fileCount} / {repo.repoSizeMB.toFixed(2)} MB
+          </Text>
+        </Box>
+
+        <Box flexDirection="column" flexGrow={1}>
+          <BarChart
+            data={languageData}
+            title="Top Languages"
+            showPercent
+            maxWidth={28}
+          />
+          <Box marginTop={1}>
+            <ScoreGauge score={repo.health.total} label="Health Score" size="md" />
           </Box>
-        ) : null}
+          {repo.source === "github" ? (
+            <Box marginTop={1} flexDirection="column">
+              <Text>Stars: {repo.stars ?? 0}</Text>
+              <Text>Forks: {repo.forks ?? 0}</Text>
+            </Box>
+          ) : null}
+        </Box>
       </Box>
     </Box>
   );

@@ -4,6 +4,9 @@ import { Box, Text } from "ink";
 import { ScoreGauge } from "../components/ScoreGauge.js";
 import type { HealthInsight, RepoData } from "../data/types.js";
 
+const FULL_BLOCK = String.fromCodePoint(0x2588);
+const MEDIUM_SHADE = String.fromCodePoint(0x2592);
+
 export interface HealthViewProps {
   repo: RepoData;
 }
@@ -25,14 +28,14 @@ function getLevelIcon(level: HealthInsight["level"]): {
   color: string;
 } {
   if (level === "critical") {
-    return { icon: "❌", color: "red" };
+    return { icon: "x", color: "red" };
   }
 
   if (level === "warning") {
-    return { icon: "⚠️", color: "yellow" };
+    return { icon: "!", color: "yellow" };
   }
 
-  return { icon: "✅", color: "green" };
+  return { icon: "+", color: "green" };
 }
 
 function buildScoreBar(score: number, width: number): string {
@@ -41,7 +44,7 @@ function buildScoreBar(score: number, width: number): string {
   const filled = Math.floor(filledExact);
   const hasPartial = filled < width && filledExact - filled >= 0.35;
 
-  return `${"█".repeat(filled)}${hasPartial ? "▒" : ""}${" ".repeat(
+  return `${FULL_BLOCK.repeat(filled)}${hasPartial ? MEDIUM_SHADE : ""}${" ".repeat(
     Math.max(width - filled - (hasPartial ? 1 : 0), 0),
   )}`;
 }
@@ -64,11 +67,11 @@ function getDimensionColor(score: number): string {
 
 export function HealthView({ repo }: HealthViewProps): React.JSX.Element {
   const dimensions = [
-    { icon: "⚡", label: "Activity", value: repo.health.activity },
-    { icon: "👥", label: "Community", value: repo.health.community },
-    { icon: "📚", label: "Documentation", value: repo.health.documentation },
-    { icon: "🛠", label: "Maintenance", value: repo.health.maintenance },
-    { icon: "🛡", label: "Security", value: repo.health.security },
+    { icon: "A", label: "Activity", value: repo.health.activity },
+    { icon: "C", label: "Community", value: repo.health.community },
+    { icon: "D", label: "Documentation", value: repo.health.documentation },
+    { icon: "M", label: "Maintenance", value: repo.health.maintenance },
+    { icon: "S", label: "Security", value: repo.health.security },
   ];
 
   const insights = [...repo.health.insights].sort(

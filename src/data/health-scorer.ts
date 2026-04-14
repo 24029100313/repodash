@@ -72,33 +72,36 @@ function scoreActivity(data: RepoDataDraft): {
   const previousThreeMonths = sumCounts(data.monthlyActivity.slice(-6, -3));
 
   let trendRaw = 0;
-  let trendLabel = "下降";
+  let trendLabel = "down";
   if (recentThreeMonths > previousThreeMonths) {
     trendRaw = 10;
-    trendLabel = "增长";
+    trendLabel = "up";
   } else if (recentThreeMonths === previousThreeMonths) {
     trendRaw = 5;
-    trendLabel = "持平";
+    trendLabel = "flat";
   }
 
   const score = clampScore((recencyRaw + trendRaw) * 2);
 
-  let message = `最近 3 个月提交趋势${trendLabel}。`;
-  let suggestion = "继续保持稳定的提交节奏，避免活跃度回落。";
+  let message = `Commit activity is ${trendLabel} over the last three months.`;
+  let suggestion =
+    "Keep a steady release or maintenance rhythm so activity does not drop off.";
   let level: HealthInsight["level"] | undefined;
 
   if (dayDiff > 365) {
-    message = "仓库已经超过 1 年没有新的提交。";
-    suggestion = "优先安排一轮恢复性维护，例如修复小问题或更新文档。";
+    message = "No commits have landed in more than a year.";
+    suggestion =
+      "Start with a small maintenance pass, such as dependency updates, docs fixes, or triage.";
     level = "critical";
   } else if (dayDiff > 90) {
-    message = "最近 90 天没有新的提交，活跃度明显偏低。";
-    suggestion = "安排近期维护计划，把发布、修复或文档更新重新拉起来。";
+    message = "No commits have landed in the last 90 days.";
+    suggestion =
+      "Plan a near-term maintenance cycle to show the project is still being looked after.";
     level = "warning";
   } else if (dayDiff <= 7) {
-    message = `最近 7 天有提交，且最近 3 个月趋势${trendLabel}。`;
+    message = `There were commits in the last 7 days, and the recent trend is ${trendLabel}.`;
   } else if (dayDiff <= 30) {
-    message = `最近 30 天有提交，且最近 3 个月趋势${trendLabel}。`;
+    message = `There were commits in the last 30 days, and the recent trend is ${trendLabel}.`;
   }
 
   return {
@@ -112,6 +115,26 @@ function scoreCommunity(data: RepoDataDraft): {
   insight: HealthInsight;
 } {
   const newContributorCutoff = subDays(new Date(), 90).getTime();
+  const hasRecentNewContributor = data.contributors.some(
+    (contributor) => contributor.firstCommit.getTime() >= newContributorCutoff,
+  );
+  const isSoloProject = data.totalContributors === 1;
+
+  if (isSoloProject) {
+    const activeRecently = data.lastCommitAt.getTime() >= subDays(new Date(), 90).getTime();
+    const score = activeRecently ? 55 : 40;
+
+    return {
+      score,
+      insight: createInsight(
+        "community",
+        score,
+        "This looks like a solo-maintained project. A bus factor of 1 is expected here, but the codebase still depends on one maintainer.",
+        "If you want to grow past solo maintenance, keep contribution docs current and carve out small starter issues.",
+        activeRecently ? "warning" : "critical",
+      ),
+    };
+  }
 
   let busFactorPoints = 0;
   if (data.busFactor >= 3) {
@@ -131,10 +154,6 @@ function scoreCommunity(data: RepoDataDraft): {
     contributorPoints = 10;
   }
 
-  const hasRecentNewContributor = data.contributors.some(
-    (contributor) => contributor.firstCommit.getTime() >= newContributorCutoff,
-  );
-
   const score = clampScore(
     busFactorPoints + contributorPoints + (hasRecentNewContributor ? 30 : 0),
   );
@@ -145,19 +164,19 @@ function scoreCommunity(data: RepoDataDraft): {
       insight: createInsight(
         "community",
         score,
-        "只有 1 人贡献了 50% 的代码。",
-        "鼓励团队成员参与核心功能开发，降低关键路径上的单点依赖。",
+        "Only 1 person contributed 50% of the code.",
+        "Encourage more teammates to work on core paths so the project is not blocked on a single maintainer.",
         "critical",
       ),
     };
   }
 
   const message = hasRecentNewContributor
-    ? "最近 3 个月出现了新贡献者，社区活力较好。"
-    : "最近 3 个月没有看到新贡献者加入。";
+    ? "New contributors have joined in the last three months, which is a healthy sign."
+    : "No new contributors showed up in the last three months.";
   const suggestion = hasRecentNewContributor
-    ? "继续维护清晰的协作流程，帮助新贡献者留存。"
-    : "完善贡献指南和 onboarding 流程，降低首次贡献门槛。";
+    ? "Keep the contribution path easy to follow so new contributors stick around."
+    : "Improve onboarding, contributor docs, and issue labeling to lower the first-contribution barrier.";
 
   return {
     score,
@@ -183,8 +202,8 @@ function scoreDocumentation(data: RepoDataDraft): {
       insight: createInsight(
         "documentation",
         score,
-        "README 和 LICENSE 都缺失，项目文档入口与授权信息都不完整。",
-        "先补齐 README 和 LICENSE，明确项目用途、安装方式和授权条款。",
+        "README and LICENSE are both missing, so the project has no clear docs entry point or license metadata.",
+        "Start by adding a README and LICENSE so users know what the project does and how it is licensed.",
         "critical",
       ),
     };
@@ -196,8 +215,8 @@ function scoreDocumentation(data: RepoDataDraft): {
       insight: createInsight(
         "documentation",
         score,
-        "README 缺失，仓库缺少最基本的使用和维护说明。",
-        "补充 README，至少覆盖项目目标、启动方式和关键目录说明。",
+        "README is missing, so the repository lacks a basic entry point for users and contributors.",
+        "Add a README that covers purpose, setup, and the project layout.",
         "warning",
       ),
     };
@@ -209,9 +228,9 @@ function scoreDocumentation(data: RepoDataDraft): {
       "documentation",
       score,
       signals.readmeWordCount > 1000
-        ? "README、授权信息和协作文档信号比较完整。"
-        : "文档基础已经具备，但深度还有提升空间。",
-      "继续补充贡献指南、变更记录和更细致的开发文档。",
+        ? "README, license data, and contributor-facing docs look reasonably complete."
+        : "The docs basics are in place, but the project could still explain more.",
+      "Keep filling in contribution, release, and troubleshooting docs as the project grows.",
     ),
   };
 }
@@ -226,8 +245,8 @@ function scoreMaintenance(data: RepoDataDraft): {
       insight: createInsight(
         "maintenance",
         50,
-        "本地仓库缺少 issue 和 PR 数据，当前使用中性分。",
-        "如果需要更准确的维护质量判断，可以切到 GitHub 仓库模式。",
+        "Local repositories do not expose issue and PR data, so maintenance is scored neutrally here.",
+        "Use GitHub mode if you want issue and PR signals in the maintenance score.",
         "warning",
       ),
     };
@@ -244,17 +263,19 @@ function scoreMaintenance(data: RepoDataDraft): {
   }
 
   const score = clampScore(
-    issuePoints + ((data.openPRs ?? 0) > 0 ? 20 : 0) + ((data.closedIssues ?? 0) > 0 ? 30 : 0),
+    issuePoints +
+      ((data.openPRs ?? 0) > 0 ? 20 : 0) +
+      ((data.closedIssues ?? 0) > 0 ? 30 : 0),
   );
 
   const message =
     (data.openPRs ?? 0) > 0
-      ? "当前存在 open PR，说明维护流程仍在运转。"
-      : "当前没有 open PR，维护活动可能偏弱。";
+      ? "There are open PRs, which suggests the maintenance loop is still active."
+      : "There are no open PRs right now, so visible maintenance activity may be thin.";
   const suggestion =
     (data.closedIssues ?? 0) > 0
-      ? "继续保持 issue 关闭节奏，并控制未解决问题的堆积。"
-      : "优先清理最近一个月的 issue 闭环，提升维护反馈速度。";
+      ? "Keep closing issues at a steady pace and avoid letting the backlog pile up."
+      : "Try to close the loop on at least a few recent issues so the repo does not feel abandoned.";
 
   return {
     score,
@@ -279,8 +300,8 @@ function scoreSecurity(data: RepoDataDraft): {
       insight: createInsight(
         "security",
         score,
-        "检测到了 package.json，但没有 lockfile。",
-        "提交 package-lock.json、pnpm-lock.yaml 或 yarn.lock，把依赖版本锁定下来。",
+        "package.json exists, but there is no lockfile.",
+        "Commit a lockfile such as package-lock.json, pnpm-lock.yaml, or yarn.lock so dependency versions stay reproducible.",
         "warning",
       ),
     };
@@ -292,8 +313,8 @@ function scoreSecurity(data: RepoDataDraft): {
       insight: createInsight(
         "security",
         score,
-        `本地仓库检测到 ${signals.dependencyCount} 个依赖，供应链复杂度偏高。`,
-        "梳理和精简依赖，并启用 audit、Dependabot 或其他依赖审计机制。",
+        `The local repository declares ${signals.dependencyCount} dependencies, which increases supply-chain surface area.`,
+        "Trim unused dependencies and add audit or automated update tooling where possible.",
         "warning",
       ),
     };
@@ -305,9 +326,9 @@ function scoreSecurity(data: RepoDataDraft): {
       "security",
       score,
       signals.hasDependabot
-        ? "检测到了 lockfile 和 Dependabot，依赖维护基础较好。"
-        : "依赖安全信号有限，自动化更新和锁定策略还可以加强。",
-      "启用 lockfile 与 Dependabot，降低供应链风险。",
+        ? "Lockfiles and Dependabot are both present, which is a solid baseline."
+        : "Dependency maintenance signals are limited right now.",
+      "Enable lockfiles and automated update tooling to reduce supply-chain risk.",
     ),
   };
 }

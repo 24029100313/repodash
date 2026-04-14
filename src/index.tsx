@@ -13,6 +13,7 @@ import { exportJson, exportMarkdown } from "./export.js";
 
 interface CliOptions {
   export?: string;
+  force?: boolean;
   json?: boolean;
   cache?: boolean;
   token?: string;
@@ -56,6 +57,7 @@ async function main(): Promise<void> {
     .version("0.1.0")
     .argument("[path_or_github]", "local path or github:owner/repo", ".")
     .option("--export <file>", "export a Markdown report and exit")
+    .option("--force", "overwrite an existing export file")
     .option("--json", "print repository data as JSON and exit")
     .option("--no-cache", "ignore cache and fetch fresh data")
     .option("--token <token>", "GitHub token override");
@@ -81,7 +83,7 @@ async function main(): Promise<void> {
         }
 
         if (options.export) {
-          await exportMarkdown(repo, options.export);
+          await exportMarkdown(repo, options.export, { force: options.force });
           process.stdout.write(`Exported report to ${path.resolve(options.export)}\n`);
           return;
         }

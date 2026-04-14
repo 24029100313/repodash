@@ -15,7 +15,7 @@ export function StatusBar({
   githubApiRemaining,
 }: StatusBarProps): React.JSX.Element {
   const helpText =
-    "Tab/1-5: 切换视图  j/k: 滚动  e: 导出报告  r: 刷新  q: 退出";
+    "Tab/1-5: switch views  j/k: scroll  e: export report  r: refresh  q: quit";
 
   const rightParts: string[] = [];
   if (sourceMode === "github" && githubApiRemaining !== undefined) {

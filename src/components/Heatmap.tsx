@@ -1,8 +1,14 @@
 import React from "react";
-import { Box, Text } from "ink";
 import { format, parse } from "date-fns";
+import { Box, Text } from "ink";
 
 import type { WeeklyActivity } from "../data/types.js";
+
+const DOT = String.fromCodePoint(0x00b7);
+const LIGHT_SHADE = String.fromCodePoint(0x2591);
+const MEDIUM_SHADE = String.fromCodePoint(0x2592);
+const DARK_SHADE = String.fromCodePoint(0x2593);
+const FULL_BLOCK = String.fromCodePoint(0x2588);
 
 export interface HeatmapProps {
   data: WeeklyActivity[];
@@ -49,22 +55,22 @@ function getCellStyle(value: number): {
   bold?: boolean;
 } {
   if (value <= 0) {
-    return { glyph: "·", color: "gray" };
+    return { glyph: DOT, color: "gray" };
   }
 
   if (value <= 3) {
-    return { glyph: "░", color: "greenBright" };
+    return { glyph: LIGHT_SHADE, color: "greenBright" };
   }
 
   if (value <= 9) {
-    return { glyph: "▒", color: "green" };
+    return { glyph: MEDIUM_SHADE, color: "green" };
   }
 
   if (value <= 19) {
-    return { glyph: "▓", color: "green", bold: true };
+    return { glyph: DARK_SHADE, color: "green", bold: true };
   }
 
-  return { glyph: "█", color: "green", bold: true };
+  return { glyph: FULL_BLOCK, color: "green", bold: true };
 }
 
 export function Heatmap({ data, title }: HeatmapProps): React.JSX.Element {

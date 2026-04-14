@@ -1,6 +1,15 @@
 import React from "react";
 import { Box, Text } from "ink";
 
+const BOX_TOP_LEFT = String.fromCodePoint(0x2554);
+const BOX_TOP_RIGHT = String.fromCodePoint(0x2557);
+const BOX_BOTTOM_LEFT = String.fromCodePoint(0x255a);
+const BOX_BOTTOM_RIGHT = String.fromCodePoint(0x255d);
+const BOX_HORIZONTAL = String.fromCodePoint(0x2550);
+const BOX_VERTICAL = String.fromCodePoint(0x2551);
+const FULL_BLOCK = String.fromCodePoint(0x2588);
+const MEDIUM_SHADE = String.fromCodePoint(0x2592);
+
 export interface ScoreGaugeProps {
   score: number;
   label?: string;
@@ -29,7 +38,7 @@ function buildGaugeBar(score: number, width: number): string {
   const filled = Math.floor(filledExact);
   const hasPartial = filled < width && filledExact - filled >= 0.35;
 
-  return `${"█".repeat(filled)}${hasPartial ? "▒" : ""}${" ".repeat(
+  return `${FULL_BLOCK.repeat(filled)}${hasPartial ? MEDIUM_SHADE : ""}${" ".repeat(
     Math.max(width - filled - (hasPartial ? 1 : 0), 0),
   )}`;
 }
@@ -53,10 +62,10 @@ export function ScoreGauge({
   const innerWidth = size === "sm" ? 6 : 8;
   const scoreText = centerText(`${Math.round(score)}/100`, innerWidth);
   const gaugeBar = buildGaugeBar(score, innerWidth);
-  const topBorder = `╔${"═".repeat(innerWidth)}╗`;
-  const middleScore = `║${scoreText}║`;
-  const middleGauge = `║${gaugeBar}║`;
-  const bottomBorder = `╚${"═".repeat(innerWidth)}╝`;
+  const topBorder = `${BOX_TOP_LEFT}${BOX_HORIZONTAL.repeat(innerWidth)}${BOX_TOP_RIGHT}`;
+  const middleScore = `${BOX_VERTICAL}${scoreText}${BOX_VERTICAL}`;
+  const middleGauge = `${BOX_VERTICAL}${gaugeBar}${BOX_VERTICAL}`;
+  const bottomBorder = `${BOX_BOTTOM_LEFT}${BOX_HORIZONTAL.repeat(innerWidth)}${BOX_BOTTOM_RIGHT}`;
 
   return (
     <Box flexDirection="column">

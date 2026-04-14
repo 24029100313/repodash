@@ -1,4 +1,5 @@
 import React from "react";
+import { format } from "date-fns";
 import { Box, Text } from "ink";
 
 import { BarChart } from "../components/BarChart.js";
@@ -13,8 +14,8 @@ function truncateMiddle(value: string, maxLength: number): string {
     return value;
   }
 
-  const keep = Math.max(4, Math.floor((maxLength - 1) / 2));
-  return `${value.slice(0, keep)}…${value.slice(-keep)}`;
+  const keep = Math.max(4, Math.floor((maxLength - 3) / 2));
+  return `${value.slice(0, keep)}...${value.slice(-keep)}`;
 }
 
 export function FilesView({ repo }: FilesViewProps): React.JSX.Element {
@@ -35,7 +36,7 @@ export function FilesView({ repo }: FilesViewProps): React.JSX.Element {
 
   return (
     <Box flexDirection="column">
-      <Text color="cyan">🔥 Most Changed Files</Text>
+      <Text color="cyan">Most Changed Files</Text>
       <BarChart data={churnChartData} maxWidth={28} />
       {churnFiles.length > 0 ? (
         churnFiles.map((file) => (
@@ -53,17 +54,17 @@ export function FilesView({ repo }: FilesViewProps): React.JSX.Element {
       )}
 
       <Box marginTop={1} flexDirection="column">
-        <Text color="cyan">📂 Recently Active Directories</Text>
+        <Text color="cyan">Recently Active Directories</Text>
         {repo.source === "github" ? (
           <Text color="yellow">
-            partial remote data: directory activity is inferred from recent commit details
+            Partial remote data: directory activity is inferred from recent commit details.
           </Text>
         ) : null}
         {repo.recentlyChangedDirs.length > 0 ? (
           repo.recentlyChangedDirs.map((directory) => (
             <Text key={directory.path}>
               {truncateMiddle(directory.path, 40)}  |  {directory.fileCount || 0} files  |  last
-              changed {directory.lastChangedAt.toISOString().slice(0, 10)}
+              changed {format(directory.lastChangedAt, "MMM d, yyyy")}
             </Text>
           ))
         ) : (
@@ -72,7 +73,7 @@ export function FilesView({ repo }: FilesViewProps): React.JSX.Element {
       </Box>
 
       <Box marginTop={1} flexDirection="column">
-        <Text color="cyan">📋 File Types</Text>
+        <Text color="cyan">File Types</Text>
         <BarChart data={fileTypeChartData} maxWidth={28} />
       </Box>
     </Box>
