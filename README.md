@@ -11,7 +11,7 @@ It is meant for maintainers, contributors, reviewers, and anyone trying to under
 
 **Quick links:** [Why repodash](#why-repodash) | [Install](#install) | [Quick Start](#quick-start) | [Health Score](#health-score) | [Development](#development)
 
-<!-- screenshot here -->
+![repodash terminal screenshot](https://raw.githubusercontent.com/24029100313/repodash/main/assets/terminal-screenshot.png)
 
 ## Why repodash
 
