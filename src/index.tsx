@@ -14,7 +14,7 @@ import { exportJson, exportMarkdown } from "./export.js";
 interface CliOptions {
   export?: string;
   json?: boolean;
-  noCache?: boolean;
+  cache?: boolean;
   token?: string;
 }
 
@@ -67,10 +67,11 @@ async function main(): Promise<void> {
       }
 
       const source = normalizeSource(sourceInput);
+      const noCache = options.cache === false;
 
       if (options.json || options.export) {
         const repo = await loadRepoData(source, {
-          noCache: options.noCache,
+          noCache,
           token: options.token,
         });
 
@@ -89,7 +90,7 @@ async function main(): Promise<void> {
       render(
         <App
           source={source}
-          noCache={options.noCache}
+          noCache={noCache}
           token={options.token}
         />,
       );

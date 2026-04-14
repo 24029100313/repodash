@@ -1,7 +1,14 @@
 import path from "node:path";
 
 import Conf from "conf";
-import { format, startOfMonth, subDays, subMonths } from "date-fns";
+import {
+  format,
+  startOfISOWeek,
+  startOfMonth,
+  subDays,
+  subMonths,
+  subWeeks,
+} from "date-fns";
 import { Octokit } from "@octokit/rest";
 
 import { calculateBusFactor } from "./local-analyzer.js";
@@ -263,6 +270,117 @@ function buildEmptyMonthlyActivity(): MonthlyActivity[] {
     month: format(subMonths(currentMonthStart, 11 - index), "yyyy-MM"),
     count: 0,
   }));
+}
+
+function calculateActivityWeeksAvailableFromDates(commitDates: Date[]): number {
+  if (commitDates.length === 0) {
+    return 0;
+  }
+
+  const currentWeekStart = startOfISOWeek(new Date());
+  const oldestVisibleWeek = startOfISOWeek(subWeeks(currentWeekStart, 51));
+  let earliestCommit = commitDates[0] ?? oldestVisibleWeek;
+
+  for (const commitDate of commitDates) {
+    if (commitDate < earliestCommit) {
+      earliestCommit = commitDate;
+    }
+  }
+
+  const firstWeek = startOfISOWeek(
+    earliestCommit > oldestVisibleWeek ? earliestCommit : oldestVisibleWeek,
+  );
+  const diffWeeks = Math.floor(
+    (currentWeekStart.getTime() - firstWeek.getTime()) / (7 * 24 * 60 * 60 * 1000),
+  );
+
+  return Math.max(0, Math.min(52, diffWeeks + 1));
+}
+
+function buildCommitActivityFromDates(commitDates: Date[]): CommitActivityResult {
+  const weeklyCounts = new Map<string, number>();
+  const monthlyCounts = new Map<string, number>();
+  const currentWeekStart = startOfISOWeek(new Date());
+  const currentMonthStart = startOfMonth(new Date());
+
+  for (const commitDate of commitDates) {
+    const weekKey = format(commitDate, "RRRR-II");
+    const monthKey = format(commitDate, "yyyy-MM");
+    weeklyCounts.set(weekKey, (weeklyCounts.get(weekKey) ?? 0) + 1);
+    monthlyCounts.set(monthKey, (monthlyCounts.get(monthKey) ?? 0) + 1);
+  }
+
+  const weeklyActivity: WeeklyActivity[] = Array.from({ length: 52 }, (_, index) => {
+    const weekStart = subWeeks(currentWeekStart, 51 - index);
+    const week = format(weekStart, "RRRR-II");
+
+    return {
+      week,
+      count: weeklyCounts.get(week) ?? 0,
+    };
+  });
+
+  const monthlyActivity: MonthlyActivity[] = Array.from({ length: 12 }, (_, index) => {
+    const monthStart = subMonths(currentMonthStart, 11 - index);
+    const month = format(monthStart, "yyyy-MM");
+
+    return {
+      month,
+      count: monthlyCounts.get(month) ?? 0,
+    };
+  });
+
+  return {
+    weeklyActivity,
+    monthlyActivity,
+    activityWeeksAvailable: calculateActivityWeeksAvailableFromDates(commitDates),
+  };
+}
+
+async function fetchCommitActivityFromHistory(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+): Promise<CommitActivityResult> {
+  const oldestVisibleWeek = startOfISOWeek(subWeeks(new Date(), 51));
+  const commitDates: Date[] = [];
+  let page = 1;
+
+  while (page <= 100) {
+    const response = await octokit.repos.listCommits({
+      owner,
+      repo,
+      since: oldestVisibleWeek.toISOString(),
+      per_page: 100,
+      page,
+    });
+
+    if (response.data.length === 0) {
+      break;
+    }
+
+    for (const commit of response.data) {
+      const isoDate =
+        commit.commit.author?.date ?? commit.commit.committer?.date ?? null;
+
+      if (!isoDate) {
+        continue;
+      }
+
+      const commitDate = new Date(isoDate);
+      if (!Number.isNaN(commitDate.getTime())) {
+        commitDates.push(commitDate);
+      }
+    }
+
+    if (response.data.length < 100) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return buildCommitActivityFromDates(commitDates);
 }
 
 async function fetchTextContent(
@@ -800,11 +918,28 @@ export async function fetchCommitActivity(
       }),
     );
   } catch {
-    return {
-      weeklyActivity: buildEmptyWeeklyActivity(),
-      monthlyActivity: buildEmptyMonthlyActivity(),
-      activityWeeksAvailable: 0,
-    };
+    try {
+      return await fetchCommitActivityFromHistory(octokit, owner, repo);
+    } catch {
+      return {
+        weeklyActivity: buildEmptyWeeklyActivity(),
+        monthlyActivity: buildEmptyMonthlyActivity(),
+        activityWeeksAvailable: 0,
+      };
+    }
+  }
+
+  const totalFromStats = commitActivity.reduce((sum, week) => sum + week.total, 0);
+  if (totalFromStats === 0) {
+    try {
+      return await fetchCommitActivityFromHistory(octokit, owner, repo);
+    } catch {
+      return {
+        weeklyActivity: buildEmptyWeeklyActivity(),
+        monthlyActivity: buildEmptyMonthlyActivity(),
+        activityWeeksAvailable: 0,
+      };
+    }
   }
 
   const weeklyActivity: WeeklyActivity[] = commitActivity.map((week) => ({
