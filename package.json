@@ -1,0 +1,57 @@
+{
+  "name": "repodash",
+  "version": "0.1.0",
+  "description": "Interactive TUI dashboard for Git repository health",
+  "type": "module",
+  "bin": {
+    "repodash": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.tsx --format esm --dts",
+    "dev": "tsx src/index.tsx",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "git",
+    "tui",
+    "ink",
+    "typescript",
+    "dashboard"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/24029100313/repodash.git"
+  },
+  "homepage": "https://github.com/24029100313/repodash#readme",
+  "bugs": {
+    "url": "https://github.com/24029100313/repodash/issues"
+  },
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@inkjs/ui": "^1.0.0",
+    "@octokit/rest": "^22.0.1",
+    "@types/react": "^19.2.14",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "conf": "^15.1.0",
+    "date-fns": "^4.1.0",
+    "ink": "^4.4.1",
+    "react": "^18.3.1",
+    "simple-git": "^3.36.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "eslint": "^10.2.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
